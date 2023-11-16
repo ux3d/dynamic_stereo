@@ -1,0 +1,6 @@
+*.png
+*.npz
+__pycache__
+checkpoints
+*.log
+outputs

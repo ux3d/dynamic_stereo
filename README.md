@@ -65,8 +65,9 @@ conda activate dynamicstereo
 ```
 conda install pytorch==1.12.1 torchvision==0.13.1 torchaudio==0.12.1 cudatoolkit=11.3 -c pytorch
 # It will require some time to install PyTorch3D. In the meantime, you may want to take a break and enjoy a cup of coffee.
-pip install "git+https://github.com/facebookresearch/pytorch3d.git@stable"
-pip install -r requirements.txt
+conda install -c bottler nvidiacub
+python -m pip install "git+https://github.com/facebookresearch/pytorch3d.git@v0.7.3"
+python -m pip install -r requirements.txt
 ```
 
 ### (Optional) Install RAFT-Stereo

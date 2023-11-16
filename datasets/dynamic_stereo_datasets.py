@@ -609,14 +609,14 @@ class SequenceSintelStereo(StereoSequenceDataset):
                     glob(osp.join(image_paths[cam][seq_idx], "*.png"))
                 )
             cam = "left"
-            sample["disparity"][cam] = sorted(
-                glob(osp.join(disparity_paths[cam][seq_idx], "*.png"))
-            )
-            for im1, disp in zip(sample["image"][cam], sample["disparity"][cam]):
-                assert (
-                    im1.split("/")[-1].split(".")[0]
-                    == disp.split("/")[-1].split(".")[0]
-                ), (im1.split("/")[-1].split(".")[0], disp.split("/")[-1].split(".")[0])
+            #sample["disparity"][cam] = sorted(
+            #    glob(osp.join(disparity_paths[cam][seq_idx], "*.png"))
+            #)
+            #for im1, disp in zip(sample["image"][cam], sample["disparity"][cam]):
+            #    assert (
+            #        im1.split("/")[-1].split(".")[0]
+            #        == disp.split("/")[-1].split(".")[0]
+            #    ), (im1.split("/")[-1].split(".")[0], disp.split("/")[-1].split(".")[0])
             self.sample_list.append(sample)
 
         logging.info(

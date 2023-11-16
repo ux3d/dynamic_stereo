@@ -12,6 +12,9 @@ from tqdm import tqdm
 from omegaconf import DictConfig
 from pytorch3d.implicitron.tools.config import Configurable
 
+import cv2
+import numpy as np
+
 from dynamic_stereo.evaluation.utils.eval_utils import depth2disparity_scale, eval_batch
 from dynamic_stereo.evaluation.utils.utils import (
     PerceptionPrediction,
@@ -55,18 +58,20 @@ class Evaluator(Configurable):
             os.makedirs(self.visualize_dir, exist_ok=True)
 
         for batch_idx, sequence in enumerate(tqdm(test_dataloader)):
+            print(f"Start predction: {batch_idx}")
             batch_dict = defaultdict(list)
             batch_dict["stereo_video"] = sequence["img"]
             if not is_real_data:
-                batch_dict["disparity"] = sequence["disp"][:, 0].abs()
-                batch_dict["disparity_mask"] = sequence["valid_disp"][:, :1]
+                print()
+                # batch_dict["disparity"] = sequence["disp"][:, 0].abs()
+                # batch_dict["disparity_mask"] = sequence["valid_disp"][:, :1]
 
-                if "mask" in sequence:
-                    batch_dict["fg_mask"] = sequence["mask"][:, :1]
-                else:
-                    batch_dict["fg_mask"] = torch.ones_like(
-                        batch_dict["disparity_mask"]
-                    )
+                # if "mask" in sequence:
+                #     batch_dict["fg_mask"] = sequence["mask"][:, :1]
+                # else:
+                #     batch_dict["fg_mask"] = torch.ones_like(
+                #         batch_dict["disparity_mask"]
+                #     )
             elif interp_shape is not None:
                 left_video = batch_dict["stereo_video"][:, 0]
                 left_video = F.interpolate(
@@ -83,55 +88,71 @@ class Evaluator(Configurable):
             else:
                 predictions = model(batch_dict)
 
+            print(f"Predcition finished: {batch_idx}")
             assert "disparity" in predictions
             predictions["disparity"] = predictions["disparity"][:, :1].clone().cpu()
+            print( predictions["disparity"].size())
+            print(predictions)
+            maxSize = str(predictions["disparity"].size()[0])
+            i = 0
+            for image in predictions["disparity"]:
+                print(f"Saving depth: {i}")
+                depth = np.float32(image[0])
+                depth_min = depth.min()
+                depth_max = depth.max()
+                normalized_depth = 255 * (depth - depth_min) / (depth_max - depth_min)
+                depth_image = cv2.applyColorMap(np.uint8(normalized_depth), cv2.COLORMAP_INFERNO)
+                str_idx = str(i).zfill(len(maxSize))
+                np.savez_compressed(f'./result/d_{batch_idx}_{str_idx}.npz', depth)
+                cv2.imwrite(f'./result/{batch_idx}_{str_idx}.png', depth_image)
+                i += 1
 
-            if not is_real_data:
-                predictions["disparity"] = predictions["disparity"] * (
-                    batch_dict["disparity_mask"].round()
-                )
+        #     if not is_real_data:
+        #         predictions["disparity"] = predictions["disparity"] * (
+        #             batch_dict["disparity_mask"].round()
+        #         )
 
-                batch_eval_result, seq_length = eval_batch(batch_dict, predictions)
+        #         batch_eval_result, seq_length = eval_batch(batch_dict, predictions)
 
-                per_batch_eval_results.append((batch_eval_result, seq_length))
-                pretty_print_perception_metrics(batch_eval_result)
+        #         per_batch_eval_results.append((batch_eval_result, seq_length))
+        #         pretty_print_perception_metrics(batch_eval_result)
 
-            if (self.visualize_interval > 0) and (
-                batch_idx % self.visualize_interval == 0
-            ):
-                perception_prediction = PerceptionPrediction()
+        #     if (self.visualize_interval > 0) and (
+        #         batch_idx % self.visualize_interval == 0
+        #     ):
+        #         perception_prediction = PerceptionPrediction()
 
-                pred_disp = predictions["disparity"]
-                pred_disp[pred_disp < self.eps] = self.eps
+        #         pred_disp = predictions["disparity"]
+        #         pred_disp[pred_disp < self.eps] = self.eps
 
-                scale = depth2disparity_scale(
-                    sequence["viewpoint"][0][0],
-                    sequence["viewpoint"][0][1],
-                    torch.tensor([pred_disp.shape[2], pred_disp.shape[3]])[None],
-                )
+        #         scale = depth2disparity_scale(
+        #             sequence["viewpoint"][0][0],
+        #             sequence["viewpoint"][0][1],
+        #             torch.tensor([pred_disp.shape[2], pred_disp.shape[3]])[None],
+        #         )
 
-                perception_prediction.depth_map = (scale / pred_disp).cuda()
-                perspective_cameras = []
-                for cam in sequence["viewpoint"]:
-                    perspective_cameras.append(cam[0])
+        #         perception_prediction.depth_map = (scale / pred_disp).cuda()
+        #         perspective_cameras = []
+        #         for cam in sequence["viewpoint"]:
+        #             perspective_cameras.append(cam[0])
 
-                perception_prediction.perspective_cameras = perspective_cameras
+        #         perception_prediction.perspective_cameras = perspective_cameras
 
-                if "stereo_original_video" in batch_dict:
-                    batch_dict["stereo_video"] = batch_dict[
-                        "stereo_original_video"
-                    ].clone()
+        #         if "stereo_original_video" in batch_dict:
+        #             batch_dict["stereo_video"] = batch_dict[
+        #                 "stereo_original_video"
+        #             ].clone()
 
-                for k, v in batch_dict.items():
-                    if isinstance(v, torch.Tensor):
-                        batch_dict[k] = v.cuda()
+        #         for k, v in batch_dict.items():
+        #             if isinstance(v, torch.Tensor):
+        #                 batch_dict[k] = v.cuda()
 
-                visualize_batch(
-                    batch_dict,
-                    perception_prediction,
-                    output_dir=self.visualize_dir,
-                    sequence_name=sequence["metadata"][0][0][0],
-                    step=step,
-                    writer=writer,
-                )
-        return per_batch_eval_results
+        #         visualize_batch(
+        #             batch_dict,
+        #             perception_prediction,
+        #             output_dir=self.visualize_dir,
+        #             sequence_name=sequence["metadata"][0][0][0],
+        #             step=step,
+        #             writer=writer,
+        #         )
+        # return per_batch_eval_results

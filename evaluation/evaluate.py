@@ -119,13 +119,13 @@ def run_eval(cfg: DefaultConfig):
         test_dataloader,
     )
 
-    aggreegate_result = aggregate_and_print_results(evaluate_result)
+    #aggreegate_result = aggregate_and_print_results(evaluate_result)
 
-    result_file = os.path.join(cfg.exp_dir, f"result_eval.json")
+    #result_file = os.path.join(cfg.exp_dir, f"result_eval.json")
 
-    print(f"Dumping eval results to {result_file}.")
-    with open(result_file, "w") as f:
-        json.dump(aggreegate_result, f)
+    #print(f"Dumping eval results to {result_file}.")
+    #with open(result_file, "w") as f:
+    #    json.dump(aggreegate_result, f)
 
 
 cs = hydra.core.config_store.ConfigStore.instance()
